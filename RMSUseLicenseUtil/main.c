@@ -211,6 +211,11 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		// set menu
 		HMENU hm = LoadMenu(GetModuleHandle(NULL), MAKEINTRESOURCE(IDR_MENU));
 		SetMenu(hwnd, hm);
+		// set dialog icon
+		HICON hicon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
+		SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hicon);
+		HICON smicon = LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 16, 16, 0);
+		SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)smicon);
 
 		// set title
 		SetWindowText(hwnd, TITLE);
