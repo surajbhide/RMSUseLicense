@@ -1,11 +1,10 @@
 #include <windows.h>
-
 #include "resource.h" 
 
 #define VERSION "0.1"
 #define TITLE "RMS Use License Utility - Version " VERSION
 
-
+///START: MISC Utility
 int GetScreenWidth(HWND hwnd)
 {
 	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
@@ -31,6 +30,7 @@ int GetScreenHeight(HWND hwnd)
 	return (mInfo.rcWork.bottom - mInfo.rcWork.top);
 	//return GetSystemMetrics(SM_CYSCREEN);
 }
+///END: MISC Utility
 
 // about dialog handler
 BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
@@ -56,13 +56,7 @@ BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam
 	return TRUE;
 }
 
-// used by main dialog handler to clean up anything that needs to be cleaned up.
-void CleanUpProcessing(HWND hwnd)
-{
-	//MessageBox(hwnd, "Are you sure", "Confirm", MB_YESNO);
-	EndDialog(hwnd, IDOK);
-}
-
+///START: Dialog scrolling related
 int SD_GetScrollPos(HWND hwnd, int bar, UINT code)
 {
 	SCROLLINFO si = { 0, 0, 0, 0, 0, 0, 0 };
@@ -214,6 +208,7 @@ void SD_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 {
 	SD_OnHVScroll(hwnd, SB_VERT, code);
 }
+///END: Dialog scrolling related
 
 void ManageDialogSize(HWND hwnd)
 {
@@ -241,6 +236,40 @@ void ManageDialogSize(HWND hwnd)
 	}
 	SetWindowPos(hwnd, HWND_TOP, rect.left, rect.top, rect.right, rect.bottom, 0);
 }
+
+/// START: RMS Related Functions.
+// used by main dialog handler to clean up anything that needs to be cleaned up.
+void CleanUpProcessing(HWND hwnd)
+{
+	//MessageBox(hwnd, "Are you sure", "Confirm", MB_YESNO);
+	EndDialog(hwnd, IDOK);
+}
+/// END: RMS Related Functions.
+
+///START: Trace file related
+char* GetTraceFileName(HWND hwnd)
+{
+	OPENFILENAME ofn;
+	static char szFileName[MAX_PATH] = "";
+
+	ZeroMemory(&ofn, sizeof(ofn));
+
+	ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
+	ofn.hwndOwner = hwnd;
+	ofn.lpstrFilter = "Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0";
+	ofn.lpstrFile = szFileName;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
+	ofn.lpstrDefExt = "txt";
+
+	if (GetSaveFileName(&ofn))
+	{
+		return szFileName;
+	}
+	// return empty string on error or user cancels dialog
+	return "";
+}
+///END: Trace File related
 
 // the main dialog handler
 BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
@@ -293,6 +322,12 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			if (ret == -1) {
 				MessageBox(hwnd, "Dialog failed!", "Error", MB_OK | MB_ICONINFORMATION);
 			}
+		}
+		break;
+		case IDC_BUTTON_TRACE:
+		{
+			char *fileName = GetTraceFileName(hwnd);
+			SendMessage(GetDlgItem (hwnd, IDC_TRACE_PATH), WM_SETTEXT, (WPARAM)0, (LPARAM)fileName);
 		}
 		break;
 		//case IDOK:
