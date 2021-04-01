@@ -116,9 +116,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.c" />
+    <ClCompile Include="MiscUtils.c" />
+    <ClCompile Include="RMSFunctions.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MiscUtils.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="RMSFunctions.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="RMSUseLicenseUtil.rc" />
