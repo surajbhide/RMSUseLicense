@@ -6,14 +6,30 @@
 #define TITLE "RMS Use License Utility - Version " VERSION
 
 
-int GetSystemWidth()
+int GetScreenWidth(HWND hwnd)
 {
-	return GetSystemMetrics(SM_CXSCREEN);
+	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO mInfo;
+	mInfo.cbSize = sizeof(MONITORINFO);
+	if (GetMonitorInfo(monitor, &mInfo) != TRUE)
+	{
+		MessageBox(hwnd, "Unable to get Monitor Size in GetScreenWidth!", "Error", MB_OK | MB_ICONINFORMATION);
+	}
+	return (mInfo.rcWork.right - mInfo.rcWork.left);
+	//return GetSystemMetrics(SM_CXSCREEN);
 }
 
-int GetSystemHeight()
+int GetScreenHeight(HWND hwnd)
 {
-	return GetSystemMetrics(SM_CYSCREEN);
+	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO mInfo;
+	mInfo.cbSize = sizeof(MONITORINFO);
+	if (GetMonitorInfo(monitor, &mInfo) != TRUE)
+	{
+		MessageBox(hwnd, "Unable to get Monitor Size in GetScreenHeight!", "Error", MB_OK | MB_ICONINFORMATION);
+	}
+	return (mInfo.rcWork.bottom - mInfo.rcWork.top);
+	//return GetSystemMetrics(SM_CYSCREEN);
 }
 
 // about dialog handler
@@ -199,7 +215,32 @@ void SD_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 	SD_OnHVScroll(hwnd, SB_VERT, code);
 }
 
+void ManageDialogSize(HWND hwnd)
+{
+	// get screen height and width
+	int sHeight = GetScreenHeight(hwnd);
+	int sWidth = GetScreenWidth(hwnd);
+	// get dialog height and width
+	RECT rect = {0, 0, 0, 0};
+	if (GetWindowRect(hwnd, &rect) != TRUE)
+	{
+		MessageBox(hwnd, "Unable to get Dialog Size!", "Error", MB_OK | MB_ICONINFORMATION);
+	}
 
+	// if dialog is bigger than screen, resize it to screen size and warn the user
+	if (sHeight <= (rect.bottom - rect.top))
+	{
+		MessageBox(hwnd, "Screen Height is smaller than required.\r\nThe GUI might not be displayed correctly.", "Error", MB_OK | MB_ICONINFORMATION);
+		// change the dialog height to sHeight
+		rect.bottom = sHeight;
+	}
+	if (sWidth <= (rect.right - rect.left))
+	{
+		MessageBox(hwnd, "Screen Width is smaller than required.\r\nThe GUI might not be displayed correctly.", "Error", MB_OK | MB_ICONINFORMATION);
+		rect.right = sWidth;
+	}
+	SetWindowPos(hwnd, HWND_TOP, rect.left, rect.top, rect.right, rect.bottom, 0);
+}
 
 // the main dialog handler
 BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
@@ -221,8 +262,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		SetWindowText(hwnd, TITLE);
 		// hide scroll bars
 		ConfigureDialogScrollArea(hwnd);
-		// resize
-		//SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE);
+		// resize dialog if screen is smaller than dialog size...also warn the user.
+		ManageDialogSize(hwnd);
 	}
 		break;
 	case WM_CLOSE:
