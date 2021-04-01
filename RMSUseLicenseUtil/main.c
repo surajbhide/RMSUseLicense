@@ -3,6 +3,7 @@
 
 #define VERSION "0.1"
 #define TITLE "RMS Use License Utility - Version " VERSION
+#define NL "\r\n"
 
 ///START: MISC Utility
 int GetScreenWidth(HWND hwnd)
@@ -32,13 +33,55 @@ int GetScreenHeight(HWND hwnd)
 }
 ///END: MISC Utility
 
+void UpdateFontForHelp(HWND hwnd)
+{
+	long lfHeight;
+	HDC hdc;
+
+	hdc = GetDC(NULL);
+	lfHeight = -MulDiv(8, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+	ReleaseDC(NULL, hdc);
+
+	HFONT hf = CreateFont(lfHeight, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Consolas");
+	// set the font on all controls
+	SendMessage(hwnd, WM_SETFONT, (WPARAM)hf, (LPARAM)TRUE);
+}
+
 // about dialog handler
 BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
 	switch (Message)
 	{
 	case WM_INITDIALOG:
-
+	{
+		HWND editBox = NULL;
+		if ((editBox = GetDlgItem(hwnd, IDC_EDIT_HOWTO)) != NULL)
+		{
+			char *helpText = "This is a utility to test Basic RMS operation of obtaining a license."NL 
+				"Developed in 2021 by Suraj for general use."NL NL
+				"INPUTS:"NL
+				"Feature Name: You must enter a Feature Name but other fields are optional."NL
+				"Version: Version is optional if your license does not have a version associated with it."NL
+				"Server: If you don't provide a server name, then RMS will use the default logic of either broadcasting or using LSHOST or LSFORCEHOST if it was defined in the environment before you started the application"NL
+				"Trace File: If trace path is not provided, no trace file is generated. The path (except for the file name) must exist. If not path is provided but just a file name, it is generated in the same folder as the application."NL NL
+				"OPERATIONS:"NL
+				"Request: You can click the 'Request' button to request a unit of license."
+				"As of now, you can't provide number of units to be requested."NL
+				"Release: Click the 'Release' button to release the obtained token."NL NL
+				"OUTPUT:"NL
+				"Actual Server: Shows the server as returned by RMS for this session."NL
+				"License Info: Provides those metrics for the requested features."NL NL
+				"MISC:"NL
+				"Activity Log: Displays some useful information related to the activity taking place within the utility."NL NL 
+				"DISCLAIMER:"
+				"This SOFTWARE PRODUCT is provided by me 'as is' and 'with all faults.' Thales or I make no representations or warranties of any kind concerning the safety, suitability, inaccuracies, typographical errors, or other harmful components of this utility. There are inherent dangers in the use of any software, and you are solely responsible for determining whether this utility is compatible with your equipment and other software installed on your equipment. You are also solely responsible for the protection of your equipment and backup of your data, and Thales or I will not be liable for any damages you may suffer in connection with using, modifying, or distributing this utility."
+				;
+			// we are on the how to dialog. add help text to the static edit window
+			SendMessage(editBox, WM_SETTEXT, (WPARAM)0, (LPARAM)helpText);
+			// change font
+			UpdateFontForHelp(editBox);
+		}
+	}
 		return TRUE;
 	case WM_COMMAND:
 		switch (LOWORD(wParam))
@@ -220,18 +263,19 @@ void ManageDialogSize(HWND hwnd)
 	if (GetWindowRect(hwnd, &rect) != TRUE)
 	{
 		MessageBox(hwnd, "Unable to get Dialog Size!", "Error", MB_OK | MB_ICONINFORMATION);
+		return;
 	}
 
 	// if dialog is bigger than screen, resize it to screen size and warn the user
 	if (sHeight <= (rect.bottom - rect.top))
 	{
-		MessageBox(hwnd, "Screen Height is smaller than required.\r\nThe GUI might not be displayed correctly.", "Error", MB_OK | MB_ICONINFORMATION);
+		MessageBox(hwnd, "Screen Height is smaller than required."NL"The GUI might not be displayed correctly.", "Error", MB_OK | MB_ICONINFORMATION);
 		// change the dialog height to sHeight
 		rect.bottom = sHeight;
 	}
 	if (sWidth <= (rect.right - rect.left))
 	{
-		MessageBox(hwnd, "Screen Width is smaller than required.\r\nThe GUI might not be displayed correctly.", "Error", MB_OK | MB_ICONINFORMATION);
+		MessageBox(hwnd, "Screen Width is smaller than required."NL"The GUI might not be displayed correctly.", "Error", MB_OK | MB_ICONINFORMATION);
 		rect.right = sWidth;
 	}
 	SetWindowPos(hwnd, HWND_TOP, rect.left, rect.top, rect.right, rect.bottom, 0);
@@ -271,6 +315,18 @@ char* GetTraceFileName(HWND hwnd)
 }
 ///END: Trace File related
 
+///START: Tooltip related
+// Description:
+//   Creates a tooltip for an item in a dialog box. 
+// Parameters:
+//   idTool - identifier of an dialog box item.
+//   nDlg - window handle of the dialog box.
+//   pszText - string to use as the tooltip text.
+// Returns:
+//   The handle to the tooltip.
+//
+
+///END: tooltip related
 // the main dialog handler
 BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
@@ -322,6 +378,15 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			if (ret == -1) {
 				MessageBox(hwnd, "Dialog failed!", "Error", MB_OK | MB_ICONINFORMATION);
 			}
+		}
+		break;
+		case ID_HELP_USAGEINSTRUCTIONS:
+		{
+			int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_HELPDIALOG), hwnd, AboutDlgProc);
+			if (ret == -1) {
+				MessageBox(hwnd, "Dialog failed!", "Error", MB_OK | MB_ICONINFORMATION);
+			}
+
 		}
 		break;
 		case IDC_BUTTON_TRACE:
