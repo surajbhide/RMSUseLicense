@@ -8,36 +8,9 @@
 #define TITLE "RMS Use License Utility - Version " VERSION
 #define NL "\r\n"
 #define TEMPBUFSIZE 2048
+
 BOOL rmsInitDone = FALSE;
 HWND statusLogControl = NULL;
-
-///START: MISC Utility
-int GetScreenWidth(HWND hwnd)
-{
-	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-	MONITORINFO mInfo;
-	mInfo.cbSize = sizeof(MONITORINFO);
-	if (GetMonitorInfo(monitor, &mInfo) != TRUE)
-	{
-		MessageBox(hwnd, "Unable to get Monitor Size in GetScreenWidth!", "Error", MB_OK | MB_ICONINFORMATION);
-	}
-	return (mInfo.rcWork.right - mInfo.rcWork.left);
-	//return GetSystemMetrics(SM_CXSCREEN);
-}
-
-int GetScreenHeight(HWND hwnd)
-{
-	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-	MONITORINFO mInfo;
-	mInfo.cbSize = sizeof(MONITORINFO);
-	if (GetMonitorInfo(monitor, &mInfo) != TRUE)
-	{
-		MessageBox(hwnd, "Unable to get Monitor Size in GetScreenHeight!", "Error", MB_OK | MB_ICONINFORMATION);
-	}
-	return (mInfo.rcWork.bottom - mInfo.rcWork.top);
-	//return GetSystemMetrics(SM_CYSCREEN);
-}
-///END: MISC Utility
 
 void UpdateFontForHelp(HWND hwnd)
 {
@@ -292,6 +265,7 @@ void ManageDialogSize(HWND hwnd)
 void CleanUpProcessing(HWND hwnd)
 {
 	//MessageBox(hwnd, "Are you sure", "Confirm", MB_YESNO);
+	LogStatusMessage(statusLogControl, "Cleaning up and shutting down...");
 	UnloadRMSDll();
 	EndDialog(hwnd, IDOK);
 }
@@ -357,6 +331,12 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		// resize dialog if screen is smaller than dialog size...also warn the user.
 		ManageDialogSize(hwnd);
 
+		// limit the max in put user can provide in text fields
+		SetTextFieldLimit(GetDlgItem(hwnd, IDC_FEATURE_TEXT), MAX_PATH);
+		SetTextFieldLimit(GetDlgItem(hwnd, IDC_VERSION_TEXT), MAX_PATH);
+		SetTextFieldLimit(GetDlgItem(hwnd, IDC_SERVER_NAME), MAX_PATH);
+		SetTextFieldLimit(GetDlgItem(hwnd, IDC_TRACE_PATH), MAX_PATH);
+
 		statusLogControl = GetDlgItem(hwnd, IDC_STATUS_TEXT);
 		// Check if RMS library can be loaded. If not, error out
 		if (LoadRMSDll() != TRUE)
@@ -416,7 +396,17 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		break;
 		case IDC_REQUEST_BUTTON:
 		{
-
+			// first validate inputs.
+			// feature should not be empty, 
+			// rest of them could be. for all, if non empty, strip leading and training spaces
+			// for trace, get dir path and ensure it exists.
+			// if all is well, then call vlsinitialize etc if it is not done already
+			TCHAR buff[MAX_PATH];
+			if (GetWindowText(GetDlgItem(hwnd, IDC_FEATURE_TEXT), buff, MAX_PATH) == 0)
+			{
+				MessageBox(hwnd, "Feature Name can't be empty!", "Error", MB_OK | MB_ICONERROR);
+				break;
+			}
 		}
 		break;
 		case IDC_RELEASE_BUTTON:

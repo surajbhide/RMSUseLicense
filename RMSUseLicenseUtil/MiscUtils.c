@@ -117,3 +117,36 @@ void LogStatusMessage (HWND msgControl, char *fmt, ...)
 	strcat_s(statusMsg, STATUS_MESSAGE_SIZE, "\r\n");
 	InternalLogMessage(msgControl, statusMsg);
 }
+
+///START: MISC Utility
+int GetScreenWidth(HWND hwnd)
+{
+	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO mInfo;
+	mInfo.cbSize = sizeof(MONITORINFO);
+	if (GetMonitorInfo(monitor, &mInfo) != TRUE)
+	{
+		MessageBox(hwnd, "Unable to get Monitor Size in GetScreenWidth!", "Error", MB_OK | MB_ICONINFORMATION);
+	}
+	return (mInfo.rcWork.right - mInfo.rcWork.left);
+	//return GetSystemMetrics(SM_CXSCREEN);
+}
+
+int GetScreenHeight(HWND hwnd)
+{
+	HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO mInfo;
+	mInfo.cbSize = sizeof(MONITORINFO);
+	if (GetMonitorInfo(monitor, &mInfo) != TRUE)
+	{
+		MessageBox(hwnd, "Unable to get Monitor Size in GetScreenHeight!", "Error", MB_OK | MB_ICONINFORMATION);
+	}
+	return (mInfo.rcWork.bottom - mInfo.rcWork.top);
+	//return GetSystemMetrics(SM_CYSCREEN);
+}
+///END: MISC Utility
+
+void SetTextFieldLimit(HWND hwnd, int limit)
+{
+	SendMessage(hwnd, EM_SETLIMITTEXT, limit, 0);
+}

@@ -29,6 +29,16 @@ typedef LS_STATUS_CODE(__cdecl *LSReleaseT)(
 	LS_HANDLE             lshandle,
 	unsigned long         units_consumed,
 	unsigned char  LSFAR *log_comment);
+typedef LS_STATUS_CODE(__cdecl *VLSgetFeatureInfoT)(
+	unsigned char   LSFAR *feature_name,
+	unsigned char   LSFAR *version,
+	int                    index,
+	char            LSFAR *unused1,
+	VLSfeatureInfo  LSFAR *feature_info);
+typedef LS_STATUS_CODE(__cdecl *VLSgetServerNameFromHandleT)(
+	LS_HANDLE        handle_id,
+	char   LSFAR     *outBuf,
+	int    outBufSz);
 
 VLSinitializeT VLSinitializeFP;
 VLScleanupT VLScleanupFP;
@@ -41,6 +51,8 @@ VLSsetContactServerT VLSsetContactServerFP;
 VLSisVirtualMachineT VLSisVirtualMachineFP;
 LSRequestT LSRequestFP;
 LSReleaseT LSReleaseFP;
+VLSgetFeatureInfoT VLSgetFeatureInfoFP;
+VLSgetServerNameFromHandleT VLSgetServerNameFromHandleFP;
 
 HINSTANCE rmsLib = NULL;
 
@@ -65,11 +77,13 @@ BOOL LoadRMSDll()
 	VLSisVirtualMachineFP = (VLSisVirtualMachineT)GetProcAddress(rmsLib, "VLSisVirtualMachine");
 	LSRequestFP = (LSRequestT)GetProcAddress(rmsLib, "LSRequest");
 	LSReleaseFP = (LSReleaseT)GetProcAddress(rmsLib, "LSRelease");
+	VLSgetFeatureInfoFP = (VLSgetFeatureInfoT)GetProcAddress(rmsLib, "VLSgetFeatureInfo");
+	VLSgetServerNameFromHandleFP = (VLSgetServerNameFromHandleT)GetProcAddress(rmsLib, "VLSgetServerNameFromHandle");
 
 	if (!VLSinitializeFP || !VLScleanupFP || !VLSsetUserTraceFileFP ||
 		!VLSsetTraceLevelFP || !VLSgetLibInfoFP || !VLScontrolRemoteSessionFP ||
 		!VLSgetServInfoFP || !VLSsetContactServerFP || !VLSisVirtualMachineFP ||
-		!LSRequestFP || !LSReleaseFP)
+		!LSRequestFP || !LSReleaseFP || !VLSgetFeatureInfoFP || !VLSgetServerNameFromHandleFP)
 	{
 		return FALSE;
 	}
