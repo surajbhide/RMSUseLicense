@@ -8,6 +8,8 @@
 #define TITLE "RMS Use License Utility - Version " VERSION
 #define NL "\r\n"
 #define TEMPBUFSIZE 2048
+BOOL rmsInitDone = FALSE;
+HWND statusLogControl = NULL;
 
 ///START: MISC Utility
 int GetScreenWidth(HWND hwnd)
@@ -290,7 +292,7 @@ void ManageDialogSize(HWND hwnd)
 void CleanUpProcessing(HWND hwnd)
 {
 	//MessageBox(hwnd, "Are you sure", "Confirm", MB_YESNO);
-	CleanupRMSUtils();
+	UnloadRMSDll();
 	EndDialog(hwnd, IDOK);
 }
 /// END: RMS Related Functions.
@@ -354,14 +356,17 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		ConfigureDialogScrollArea(hwnd);
 		// resize dialog if screen is smaller than dialog size...also warn the user.
 		ManageDialogSize(hwnd);
+
+		statusLogControl = GetDlgItem(hwnd, IDC_STATUS_TEXT);
 		// Check if RMS library can be loaded. If not, error out
-		if (InitRMSUtils() != TRUE)
+		if (LoadRMSDll() != TRUE)
 		{
 			char msg[TEMPBUFSIZE] = { 0 };
 			sprintf_s(msg, TEMPBUFSIZE, "Unable to load lsapiw32.dll.Make sure it is present at [%s].", GetRMSDllLocation());
 			MessageBox(hwnd, msg, "Error", MB_OK | MB_ICONERROR);
 			EndDialog(hwnd, -1);
 		}
+		LogStatusMessage(statusLogControl, "Loaded lsapiw32.dll from [%s]...", GetRMSDllLocation());
 	}
 		break;
 	case WM_CLOSE:
@@ -406,6 +411,17 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		{
 			char *fileName = GetTraceFileName(hwnd);
 			SendMessage(GetDlgItem (hwnd, IDC_TRACE_PATH), WM_SETTEXT, (WPARAM)0, (LPARAM)fileName);
+			LogStatusMessage(statusLogControl, "Trace file [%s] selected.", fileName);
+		}
+		break;
+		case IDC_REQUEST_BUTTON:
+		{
+
+		}
+		break;
+		case IDC_RELEASE_BUTTON:
+		{
+
 		}
 		break;
 		//case IDOK:

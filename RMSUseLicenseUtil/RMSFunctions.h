@@ -1,4 +1,4 @@
 #pragma once
 
-BOOL InitRMSUtils();
-void CleanupRMSUtils();
+BOOL LoadRMSDll();
+void UnloadRMSDll();
