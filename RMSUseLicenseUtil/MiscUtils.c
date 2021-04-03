@@ -2,10 +2,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "CommonDefs.h"
 #include "MiscUtils.h"
+#include "resource.h"
+#include "SaveSettings.h"
 
-#define TMP_BUF_SIZE 256
-#define STATUS_MESSAGE_SIZE 1024*4
+static HWND statusLogControl = NULL;
+static HWND dialogHandle = NULL;
+
+void SetDialogHandle(HWND ctrl)
+{
+	dialogHandle = ctrl;
+}
+
+HWND GetLogControl()
+{
+	return GetDlgItem (dialogHandle, IDC_STATUS_TEXT);
+}
 
 char* GetRMSDllLocation()
 {
@@ -27,10 +40,11 @@ char* GetRMSDllLocation()
 	return path;
 }
 
-void InternalLogMessage (HWND controlH, char *lpszOutStr)
+void InternalLogMessage (char *lpszOutStr)
 {
 	HWND hPrevWinFocus;
 	int iIndex;
+	HWND controlH = GetLogControl();
 
 	hPrevWinFocus = GetFocus();
 	iIndex = GetWindowTextLength(controlH);
@@ -43,16 +57,16 @@ void InternalLogMessage (HWND controlH, char *lpszOutStr)
 	SetFocus(hPrevWinFocus);
 }
 
-void LogStatusMessage (HWND msgControl, char *fmt, ...)
+void LogStatusMessage (char *fmt, ...)
 {
 	const char *p;
 	va_list argp;
 	int i;
 	char *s;
-	char fmtbuf[TMP_BUF_SIZE];
-	static char statusMsg[STATUS_MESSAGE_SIZE];
+	char fmtbuf[SMALL_BUFFER_SIZE];
+	static char statusMsg[BUFSIZE] = TEXT("");
 	
-	memset(statusMsg, 0, STATUS_MESSAGE_SIZE);
+	memset(statusMsg, 0, BUFSIZE);
 
 	va_start(argp, fmt);
 
@@ -62,7 +76,7 @@ void LogStatusMessage (HWND msgControl, char *fmt, ...)
 		{
 			//sprintf_s(fmtbuf, TMP_BUF_SIZE, "%c", *p);
 			//strcat(statusMsg, fmtbuf);
-			if (strlen((const char*)statusMsg) + 1 < STATUS_MESSAGE_SIZE)
+			if (strlen((const char*)statusMsg) + 1 < BUFSIZE)
 			{
 				statusMsg[strlen(statusMsg)+1] = 0; 
 				statusMsg[strlen(statusMsg)] = *p;
@@ -74,8 +88,7 @@ void LogStatusMessage (HWND msgControl, char *fmt, ...)
 		{
 		case 'c':
 			i = va_arg(argp, int);
-//			sprintf_s(fmtbuf, TMP_BUF_SIZE, "%c", i);
-			if (strlen((const char*)statusMsg) + 1 < STATUS_MESSAGE_SIZE)
+			if (strlen((const char*)statusMsg) + 1 < BUFSIZE)
 			{
 				statusMsg[strlen(statusMsg) + 1] = 0;
 				statusMsg[strlen(statusMsg)] = *p;
@@ -84,27 +97,35 @@ void LogStatusMessage (HWND msgControl, char *fmt, ...)
 
 		case 'd':
 			i = va_arg(argp, int);
-			_itoa_s(i, fmtbuf, TMP_BUF_SIZE, 10);
-			if (strlen((const char*)statusMsg) + strlen(fmtbuf) < STATUS_MESSAGE_SIZE)
-				strcat_s(statusMsg, STATUS_MESSAGE_SIZE, fmtbuf);
+			_itoa_s(i, fmtbuf, SMALL_BUFFER_SIZE, 10);
+			if (strlen((const char*)statusMsg) + strlen(fmtbuf) < BUFSIZE)
+				strcat_s(statusMsg, BUFSIZE, fmtbuf);
 			break;
 
 		case 's':
 			s = va_arg(argp, char *);
-			if (strlen((const char*)statusMsg) + strlen(s) < STATUS_MESSAGE_SIZE)
-				strcat_s(statusMsg, STATUS_MESSAGE_SIZE, s);
+			if (strlen((const char*)statusMsg) + strlen(s) < BUFSIZE)
+				strcat_s(statusMsg, BUFSIZE, s);
 			break;
 
 		case 'x':
 			i = va_arg(argp, int);
-			_itoa_s(i, fmtbuf, TMP_BUF_SIZE, 16);
-			if (strlen((const char*)statusMsg) + strlen(fmtbuf) < STATUS_MESSAGE_SIZE)
-				strcat_s(statusMsg, STATUS_MESSAGE_SIZE, fmtbuf);
+			_itoa_s(i, fmtbuf, SMALL_BUFFER_SIZE, 16);
+			if (strlen((const char*)statusMsg) + strlen(fmtbuf) < BUFSIZE)
+				strcat_s(statusMsg, BUFSIZE, fmtbuf);
+			break;
+
+		case 'X':
+			i = va_arg(argp, int);
+			_itoa_s(i, fmtbuf, SMALL_BUFFER_SIZE, 16);
+			CharUpperBuff(fmtbuf, SMALL_BUFFER_SIZE);
+			if (strlen((const char*)statusMsg) + strlen(fmtbuf) < BUFSIZE)
+				strcat_s(statusMsg, BUFSIZE, fmtbuf);
 			break;
 
 		case '%':
-			sprintf_s(fmtbuf, TMP_BUF_SIZE, "%c", '%');
-			if (strlen((const char*)statusMsg) + 1 < STATUS_MESSAGE_SIZE)
+			sprintf_s(fmtbuf, SMALL_BUFFER_SIZE, "%c", '%');
+			if (strlen((const char*)statusMsg) + 1 < BUFSIZE)
 			{
 				statusMsg[strlen(statusMsg) + 1] = 0;
 				statusMsg[strlen(statusMsg)] = (char)'%c';
@@ -114,8 +135,8 @@ void LogStatusMessage (HWND msgControl, char *fmt, ...)
 	}
 
 	va_end(argp);
-	strcat_s(statusMsg, STATUS_MESSAGE_SIZE, "\r\n");
-	InternalLogMessage(msgControl, statusMsg);
+	strcat_s(statusMsg, BUFSIZE, "\r\n");
+	InternalLogMessage(statusMsg);
 }
 
 ///START: MISC Utility
@@ -149,4 +170,112 @@ int GetScreenHeight(HWND hwnd)
 void SetTextFieldLimit(HWND hwnd, int limit)
 {
 	SendMessage(hwnd, EM_SETLIMITTEXT, limit, 0);
+}
+
+BOOL ValidatePath(char *inpath)
+{
+	static TCHAR path[MAX_PATH] = { 0 };
+	char drive[_MAX_DRIVE];
+	char dir[_MAX_DIR];
+	char fname[_MAX_FNAME];
+	char ext[_MAX_EXT];
+	TCHAR  buffer[BUFSIZE] = TEXT("");
+
+	// first get the full path
+	if (GetFullPathName(inpath, BUFSIZE, buffer, NULL) == FALSE)
+	{
+		LogStatusMessage("Unable to get full path for [%s]", inpath);
+		return FALSE;
+	}
+	// get parts that matter
+	_splitpath_s(buffer, drive, _MAX_DRIVE, dir, _MAX_DIR, fname, _MAX_FNAME, ext, _MAX_EXT);
+	sprintf_s(path, MAX_PATH, "%s%s", drive, dir);
+	// check if path exists. if not return false;
+	DWORD dwAttrib = GetFileAttributes(path);
+
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
+BOOL GetEditControlText(HWND hwnd, char *destination, int destSize)
+{
+	TCHAR buffer[BUFSIZE] = TEXT("");
+
+	// get window text length
+	if (GetWindowTextLength(hwnd) == 0)
+	{
+		if (GetLastError() != 0)
+		{
+			// error
+			return FALSE;
+		}
+	}
+	else
+	{
+		// there is text
+		if (GetWindowText(hwnd, buffer, BUFSIZE) == 0)
+		{
+			// error reading text
+			return FALSE;
+		}
+		else
+			strcpy_s(destination, destSize, buffer);
+	}
+	return TRUE;
+}
+
+void UpdateServerName(char *servername)
+{
+	SendMessage(GetDlgItem(dialogHandle, IDC_ACTUAL_SERVER_TEXT), WM_SETTEXT, (WPARAM)0, (LPARAM)servername);
+}
+void UpdateLicenseInfo(char *info)
+{
+	SendMessage(GetDlgItem(dialogHandle, IDC_LICENSE_INFO), WM_SETTEXT, (WPARAM)0, (LPARAM)info);
+}
+
+void ReadSettingsCB(char *key, char *value)
+{
+	if (strcmp(key, FEATURE_SETTING_TOKEN) == 0)
+		SendMessage(GetDlgItem(dialogHandle, IDC_FEATURE_TEXT), WM_SETTEXT, (WPARAM)0, (LPARAM)value);
+	if (strcmp(key, VERSION_SETTING_TOKEN) == 0)
+		SendMessage(GetDlgItem(dialogHandle, IDC_VERSION_TEXT), WM_SETTEXT, (WPARAM)0, (LPARAM)value);
+	if (strcmp(key, SERVER_SETTING_TOKEN) == 0)
+		SendMessage(GetDlgItem(dialogHandle, IDC_SERVER_NAME), WM_SETTEXT, (WPARAM)0, (LPARAM)value);
+	if (strcmp(key, TRACE_SETTING_TOKEN) == 0)
+		SendMessage(GetDlgItem(dialogHandle, IDC_TRACE_PATH), WM_SETTEXT, (WPARAM)0, (LPARAM)value);
+}
+BOOL SaveSettingsCB(char *key, char *value, int *counter)
+{
+	char buf[BUFSIZE] = TEXT("");
+
+	switch (*counter)
+	{
+	case 1:
+		strcpy_s(key, BUFSIZE, FEATURE_SETTING_TOKEN);
+		if (GetEditControlText(GetDlgItem(dialogHandle, IDC_FEATURE_TEXT), buf, BUFSIZE))
+			strcpy_s(value, BUFSIZE, buf);
+		return TRUE;
+		break;
+	case 2:
+		strcpy_s(key, BUFSIZE, VERSION_SETTING_TOKEN);
+		if (GetEditControlText(GetDlgItem(dialogHandle, IDC_VERSION_TEXT), buf, BUFSIZE))
+			strcpy_s(value, BUFSIZE, buf);
+		return TRUE;
+		break;
+	case 3:
+		strcpy_s(key, BUFSIZE, SERVER_SETTING_TOKEN);
+		if (GetEditControlText(GetDlgItem(dialogHandle, IDC_SERVER_NAME), buf, BUFSIZE))
+			strcpy_s(value, BUFSIZE, buf);
+		return TRUE;
+		break;
+	case 4:
+		strcpy_s(key, BUFSIZE, TRACE_SETTING_TOKEN);
+		if (GetEditControlText(GetDlgItem(dialogHandle, IDC_TRACE_PATH), buf, BUFSIZE))
+			strcpy_s(value, BUFSIZE, buf);
+		return TRUE;
+		break;
+	default:
+		return FALSE;
+		break;
+	}
+	return FALSE;
 }

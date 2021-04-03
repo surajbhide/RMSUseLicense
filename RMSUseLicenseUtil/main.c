@@ -3,15 +3,48 @@
 #include "resource.h" 
 #include "RMSFunctions.h"
 #include "MiscUtils.h"
+#include "CommonDefs.h"
+#include "SaveSettings.h"
 
-#define VERSION "0.1"
-#define TITLE "RMS Use License Utility - Version " VERSION
-#define NL "\r\n"
-#define TEMPBUFSIZE 2048
+// global hook procedure
+HHOOK hhookCBTProc = 0;
+static InputDataT inputData = { "", "", "", "" };
 
-BOOL rmsInitDone = FALSE;
-HWND statusLogControl = NULL;
+LRESULT CALLBACK pfnCBTMsgBoxHook(int nCode, WPARAM wParam, LPARAM lParam)
+{
+	if (nCode == HCBT_ACTIVATE)
+	{
+		HWND hwnd = (HWND)wParam;
 
+		// At this point you have the hwnd of the newly created 
+		// message box that so you can position it at will
+		//SetWindowPos(hwnd, ...);
+		RECT formRect;
+		RECT messageBoxRect;
+		int xPos;
+		int yPos;
+
+		GetWindowRect(GetParent(hwnd), &formRect);
+		GetWindowRect(hwnd, &messageBoxRect);
+
+		xPos = (int)((formRect.left + (formRect.right - formRect.left) / 2) - ((messageBoxRect.right - messageBoxRect.left) / 2));
+		yPos = (int)((formRect.top + (formRect.bottom - formRect.top) / 2) - ((messageBoxRect.bottom - messageBoxRect.top) / 2));
+
+		SetWindowPos(hwnd, 0, xPos, yPos, 0, 0, 0x1 | 0x4 | 0x10);
+		// remove the hook
+		UnhookWindowsHookEx(hhookCBTProc);
+	}
+
+	return (CallNextHookEx(hhookCBTProc, nCode, wParam, lParam));
+}
+
+int CenteredMessageBox(HWND hWnd, LPCTSTR lpText, LPCTSTR lpCaption, UINT uType)
+{
+	// set hook to center the message box that follows
+	hhookCBTProc = SetWindowsHookEx(WH_CBT, pfnCBTMsgBoxHook, 0, GetCurrentThreadId());
+	int sResult = MessageBox(hWnd, lpText, lpCaption, uType);
+	return sResult;
+}
 void UpdateFontForHelp(HWND hwnd)
 {
 	long lfHeight;
@@ -59,6 +92,7 @@ BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam
 			SendMessage(editBox, WM_SETTEXT, (WPARAM)0, (LPARAM)helpText);
 			// change font
 			UpdateFontForHelp(editBox);
+			SendMessage(hwnd, WM_NEXTDLGCTL, (WPARAM)editBox, TRUE);
 		}
 	}
 		return TRUE;
@@ -252,21 +286,118 @@ void ManageDialogSize(HWND hwnd)
 		// change the dialog height to sHeight
 		rect.bottom = sHeight;
 	}
+	else
+	{
+		rect.top = (int)((sHeight / 2) - ((rect.bottom - rect.top) / 2));
+	}
 	if (sWidth <= (rect.right - rect.left))
 	{
 		MessageBox(hwnd, "Screen Width is smaller than required."NL"The GUI might not be displayed correctly.", "Error", MB_OK | MB_ICONINFORMATION);
 		rect.right = sWidth;
 	}
+	else
+	{
+		rect.left = (int)((sWidth / 2) - ((rect.right - rect.left) / 2));
+	}
 	SetWindowPos(hwnd, HWND_TOP, rect.left, rect.top, rect.right, rect.bottom, 0);
 }
 
 /// START: RMS Related Functions.
+void ProcessLicenseRequest(HWND hwnd)
+{
+	static BOOL shouldReadInput = TRUE;
+
+	if (RMSAreReleasePending() == FALSE)
+	{
+		if (GetEditControlText(GetDlgItem(hwnd, IDC_FEATURE_TEXT), inputData.featureName, MAX_PATH) != TRUE)
+		{
+			CenteredMessageBox(hwnd, "Unable to read Feature Name and it can't be empty!", "Error", MB_OK | MB_ICONERROR);
+			return;
+		}
+		else if (strlen(inputData.featureName) <= 0)
+		{
+			CenteredMessageBox(hwnd, "Feature Name can't be empty!", "Error", MB_OK | MB_ICONERROR);
+			SendMessage(hwnd, WM_NEXTDLGCTL, (WPARAM)GetDlgItem(hwnd,IDC_FEATURE_TEXT), TRUE);
+			return;
+		}
+
+		if (GetEditControlText(GetDlgItem(hwnd, IDC_VERSION_TEXT), inputData.versionNumber, MAX_PATH) != TRUE)
+			LogStatusMessage("Unable to read version info...assuming none given...");
+
+		if (GetEditControlText(GetDlgItem(hwnd, IDC_SERVER_NAME), inputData.serverName, MAX_PATH) != TRUE)
+			LogStatusMessage("Unable to read server info...assuming none given...");
+
+		if (GetEditControlText(GetDlgItem(hwnd, IDC_TRACE_PATH), inputData.tracePath, MAX_PATH) != TRUE)
+			LogStatusMessage("Unable to read trace path ...assuming none given...");
+
+		// make sure the dir in the path is valid
+		if (strlen(inputData.tracePath) > 0)
+		{
+			if (ValidatePath(inputData.tracePath) != TRUE)
+			{
+				CenteredMessageBox(hwnd, "Unable to validate the directory part of trace path. Ensure it is correct.", "Error", MB_OK | MB_ICONERROR);
+				return;
+			}
+			else
+			{
+				LogStatusMessage("Trace path [%s] appears to be valid based on validating it's directory path.", inputData.tracePath);
+			}
+		}
+
+		// pass trace file if given and contact server if given
+		if (RMSCallInitMethods() != TRUE)
+		{
+			CenteredMessageBox(hwnd, "Unable to Initialize RMS. Please check status window for errors and fix them.",
+				"Error", MB_OK | MB_ICONERROR);
+			return;
+		}
+		// now set the contact server and trace paths
+		RMSSetTracePath(inputData);
+		RMSSetContactServer(inputData);
+	}
+
+	if (RMSRequestLicense(inputData) != TRUE)
+	{
+		// failed to get licenses
+		return;
+	}
+	RMSGetServerInfo(inputData);
+
+	// if it comes here then means we got a handle, disable inputs
+	if (RMSAreReleasePending() == TRUE)
+	{
+		EnableWindow(GetDlgItem(hwnd, IDC_TRACE_PATH), FALSE);
+		EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_TRACE), FALSE);
+		EnableWindow(GetDlgItem(hwnd, IDC_FEATURE_TEXT), FALSE);
+		EnableWindow(GetDlgItem(hwnd, IDC_VERSION_TEXT), FALSE);
+		EnableWindow(GetDlgItem(hwnd, IDC_SERVER_NAME), FALSE);
+	}
+}
+
+void ProcessLicenseRelease(HWND hwnd)
+{
+	// call release rms license
+	// if there are no more handles then enable controls again
+	ReleaseRMSLicense();
+	if (RMSAreReleasePending() == FALSE)
+	{
+		EnableWindow(GetDlgItem(hwnd, IDC_TRACE_PATH), TRUE);
+		EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_TRACE), TRUE);
+		EnableWindow(GetDlgItem(hwnd, IDC_FEATURE_TEXT), TRUE);
+		EnableWindow(GetDlgItem(hwnd, IDC_VERSION_TEXT), TRUE);
+		EnableWindow(GetDlgItem(hwnd, IDC_SERVER_NAME), TRUE);
+	}
+}
+
 // used by main dialog handler to clean up anything that needs to be cleaned up.
 void CleanUpProcessing(HWND hwnd)
 {
 	//MessageBox(hwnd, "Are you sure", "Confirm", MB_YESNO);
-	LogStatusMessage(statusLogControl, "Cleaning up and shutting down...");
-	UnloadRMSDll();
+	SaveUserSettings(SaveSettingsCB);
+	LogStatusMessage("Cleaning up and shutting down...");
+	// call vls cleanup
+	RMSCallCleanupMethods();
+	RMSUnloadDll();
 	EndDialog(hwnd, IDOK);
 }
 /// END: RMS Related Functions.
@@ -337,16 +468,25 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		SetTextFieldLimit(GetDlgItem(hwnd, IDC_SERVER_NAME), MAX_PATH);
 		SetTextFieldLimit(GetDlgItem(hwnd, IDC_TRACE_PATH), MAX_PATH);
 
-		statusLogControl = GetDlgItem(hwnd, IDC_STATUS_TEXT);
+		SetDialogHandle(hwnd);
+		UpdateFontForHelp(GetDlgItem(hwnd, IDC_STATUS_TEXT));
+
 		// Check if RMS library can be loaded. If not, error out
-		if (LoadRMSDll() != TRUE)
+		if (RMSLoadDll() != TRUE)
 		{
-			char msg[TEMPBUFSIZE] = { 0 };
-			sprintf_s(msg, TEMPBUFSIZE, "Unable to load lsapiw32.dll.Make sure it is present at [%s].", GetRMSDllLocation());
+			char msg[BUFSIZE] = { 0 };
+			sprintf_s(msg, BUFSIZE, "Unable to load lsapiw32.dll.Make sure it is present at [%s]. \r\nOr make sure it is newer than or equal to 8.1 release of RMS.", GetRMSDllLocation());
 			MessageBox(hwnd, msg, "Error", MB_OK | MB_ICONERROR);
 			EndDialog(hwnd, -1);
 		}
-		LogStatusMessage(statusLogControl, "Loaded lsapiw32.dll from [%s]...", GetRMSDllLocation());
+		// if RMS dll is loaded do the vlsinitialize and few other things now
+		if (RMSCallInitMethods() != TRUE)
+		{
+			MessageBox(hwnd, "Unable to Initialize RMS.", "Error", MB_OK | MB_ICONERROR);
+			EndDialog(hwnd, -1);
+		}
+		// restore user settings if any
+		RestoreUserSettings(ReadSettingsCB);
 	}
 		break;
 	case WM_CLOSE:
@@ -374,7 +514,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		{
 			int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_ABOUT), hwnd, AboutDlgProc);
 			if (ret == -1) {
-				MessageBox(hwnd, "Dialog failed!", "Error", MB_OK | MB_ICONINFORMATION);
+				CenteredMessageBox(hwnd, "Dialog failed!", "Error", MB_OK | MB_ICONINFORMATION);
 			}
 		}
 		break;
@@ -382,36 +522,25 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		{
 			int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_HELPDIALOG), hwnd, AboutDlgProc);
 			if (ret == -1) {
-				MessageBox(hwnd, "Dialog failed!", "Error", MB_OK | MB_ICONINFORMATION);
+				CenteredMessageBox(hwnd, "Dialog failed!", "Error", MB_OK | MB_ICONINFORMATION);
 			}
-
 		}
 		break;
 		case IDC_BUTTON_TRACE:
 		{
 			char *fileName = GetTraceFileName(hwnd);
 			SendMessage(GetDlgItem (hwnd, IDC_TRACE_PATH), WM_SETTEXT, (WPARAM)0, (LPARAM)fileName);
-			LogStatusMessage(statusLogControl, "Trace file [%s] selected.", fileName);
+			LogStatusMessage("Trace file [%s] selected.", fileName);
 		}
 		break;
 		case IDC_REQUEST_BUTTON:
 		{
-			// first validate inputs.
-			// feature should not be empty, 
-			// rest of them could be. for all, if non empty, strip leading and training spaces
-			// for trace, get dir path and ensure it exists.
-			// if all is well, then call vlsinitialize etc if it is not done already
-			TCHAR buff[MAX_PATH];
-			if (GetWindowText(GetDlgItem(hwnd, IDC_FEATURE_TEXT), buff, MAX_PATH) == 0)
-			{
-				MessageBox(hwnd, "Feature Name can't be empty!", "Error", MB_OK | MB_ICONERROR);
-				break;
-			}
+			ProcessLicenseRequest(hwnd);
 		}
 		break;
 		case IDC_RELEASE_BUTTON:
 		{
-
+			ProcessLicenseRelease(hwnd);
 		}
 		break;
 		//case IDOK:
