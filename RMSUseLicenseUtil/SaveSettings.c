@@ -45,13 +45,16 @@ BOOL SaveUserSettings(cbSetFuncPtr cb)
 	}
 
 	// file exists. and is open. read the data.
-	char buf[BUFSIZE] = "";
-	char buf1[BUFSIZE] = "";
+	char key[BUFSIZE] = "";
+	char value[BUFSIZE] = "";
 	int counter = 1;
-	while (cb(buf, buf1, &counter) == TRUE)
+	while (cb(key, value, &counter) == TRUE)
 	{
-		fprintf_s(fileHandle, "%s=%s\n", buf, buf1);
-		LogStatusMessage("Stored setting [%s] with value [%s]", buf, buf1);
+		if (strlen(value) > 0)
+		{
+			fprintf_s(fileHandle, "%s=%s\n", key, value);
+			LogStatusMessage("Stored setting [%s] with value [%s]", key, value);
+		}
 		counter++;
 	}
 	fclose(fileHandle);

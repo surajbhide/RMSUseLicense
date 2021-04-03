@@ -14,3 +14,4 @@ void UpdateServerName(char *servername);
 void UpdateLicenseInfo(char *info);
 void ReadSettingsCB(char *key, char *value);
 BOOL SaveSettingsCB(char *key, char *value, int *counter);
+void SetAppTitle(char *suffix);

@@ -279,3 +279,16 @@ BOOL SaveSettingsCB(char *key, char *value, int *counter)
 	}
 	return FALSE;
 }
+
+void SetAppTitle(char *suffix)
+{
+	char buffer[BUFSIZE] = TEXT("");
+
+	strcpy_s(buffer, BUFSIZE, TITLE);
+	if (strlen(suffix) > 0)
+	{
+		strcat_s(buffer, BUFSIZE, " "); 
+		strcat_s(buffer, BUFSIZE, suffix);
+	}
+	SetWindowText(dialogHandle, buffer);
+}

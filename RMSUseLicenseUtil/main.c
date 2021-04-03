@@ -309,6 +309,11 @@ void ProcessLicenseRequest(HWND hwnd)
 
 	if (RMSAreReleasePending() == FALSE)
 	{
+		// re read all info from fields
+		inputData.featureName[0] = 0;
+		inputData.versionNumber[0] = 0;
+		inputData.serverName[0] = 0;
+		inputData.tracePath[0] = 0;
 		if (GetEditControlText(GetDlgItem(hwnd, IDC_FEATURE_TEXT), inputData.featureName, MAX_PATH) != TRUE)
 		{
 			CenteredMessageBox(hwnd, "Unable to read Feature Name and it can't be empty!", "Error", MB_OK | MB_ICONERROR);
@@ -455,8 +460,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 		HICON smicon = LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 16, 16, 0);
 		SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)smicon);
 
-		// set title
-		SetWindowText(hwnd, TITLE);
 		// hide scroll bars
 		ConfigureDialogScrollArea(hwnd);
 		// resize dialog if screen is smaller than dialog size...also warn the user.
@@ -470,6 +473,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 		SetDialogHandle(hwnd);
 		UpdateFontForHelp(GetDlgItem(hwnd, IDC_STATUS_TEXT));
+		// set title
+		SetAppTitle("");
 
 		// Check if RMS library can be loaded. If not, error out
 		if (RMSLoadDll() != TRUE)

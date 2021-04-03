@@ -207,7 +207,7 @@ void RMSGetServerInfo(InputDataT inputData)
 	else
 	{
 		LogStatusMessage("Information about the RMS server:\n");
-		LogStatusMessage("Version     = [%d:%d:%d::%d]\n", serverInfo.major_no, serverInfo.minor_no,
+		LogStatusMessage("Version     = [%d.%d.%d.%d]\n", serverInfo.major_no, serverInfo.minor_no,
 			serverInfo.revision_no, serverInfo.build_no);
 		LogStatusMessage("Vendor Info = [%s]\n", serverInfo.vendor_info);
 		LogStatusMessage("Platform    = [%s]\n", serverInfo.platform);
@@ -287,11 +287,20 @@ BOOL RMSAreReleasePending()
 BOOL RMSSetTracePath(InputDataT inputData)
 {
 	LS_STATUS_CODE status = LS_NO_SUCCESS;
+	static char storedTracePath[BUFSIZE] = TEXT("");
 
 	if (inputData.tracePath == NULL || strlen(inputData.tracePath) <= 0)
 		return FALSE;
 
 	LogStatusMessage("Enabling trace logging...");
+	// delete the trace file if it is different from the prior one
+	if (strcmp(storedTracePath, inputData.tracePath) != 0)
+	{
+		// they are different
+		remove(inputData.tracePath);
+		LogStatusMessage("Removed trace path [%s]...", inputData.tracePath);
+		strcpy_s(storedTracePath, BUFSIZE, inputData.tracePath);
+	}
 	if ((status = VLSsetUserTraceFileFP(VLS_NULL, inputData.tracePath)) != LS_SUCCESS)
 	{
 		LogStatusMessage("FAIL: VLSsetUserTraceFile returned [%d][0x%X]", status, status);
@@ -317,8 +326,7 @@ BOOL RMSSetContactServer(InputDataT inputData)
 {
 	LS_STATUS_CODE status = LS_NO_SUCCESS;
 
-	if (strlen(inputData.serverName) > 0 &&
-		(status = VLSsetContactServerFP(inputData.serverName)) != LS_SUCCESS)
+	if ((status = VLSsetContactServerFP(inputData.serverName)) != LS_SUCCESS)
 	{
 		LogStatusMessage("FAIL: VLSsetContactServer returned [%d][0x%X] for server name [%s]",
 			status, status, inputData.serverName);
