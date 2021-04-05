@@ -227,13 +227,14 @@ BOOL RMSRequestLicense(InputDataT input)
 		"calling from RMS utility",
 		NULL, &handle)) != LS_SUCCESS)
 	{
-		LogStatusMessage("FAIL: LSRequest returned [%d][0x%X]", status, status);
+		LogStatusMessage("FAIL: LSRequest returned [%d][0x%X] for feature [%s] and version [%s]",
+			status, status, input.featureName, input.versionNumber);
 		SetCursor(LoadCursor(NULL, IDC_ARROW));
 		return FALSE;
 	}
 	else
 	{
-		LogStatusMessage("LSRequest returned successfully.");
+		LogStatusMessage("LSRequest returned successfully for feature [%s] and version [%s].", input.featureName, input.versionNumber);
 	}
 
 	LicenseInfoT stackData; 

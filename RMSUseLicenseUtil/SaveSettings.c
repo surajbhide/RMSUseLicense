@@ -38,7 +38,7 @@ BOOL SaveUserSettings(cbSetFuncPtr cb)
 	// if file doesn't exist return false
 	FILE *fileHandle = NULL;
 	int ret = fopen_s(&fileHandle, path, "w");
-	if (ret != 0)
+	if (ret != 0 || fileHandle == NULL)
 	{
 		LogStatusMessage("Unable to open the settings file [%s] for writing. fopen_s error [%d]", path, ret);
 		return FALSE;
@@ -69,9 +69,9 @@ BOOL RestoreUserSettings(cbFunctionPtr cb)
 		return FALSE;
 
 	// if file doesn't exist return false
-	FILE *fileHandle;
+	FILE *fileHandle = NULL;
 	int ret = fopen_s (&fileHandle, path, "r");
-	if (ret != 0)
+	if (ret != 0 || fileHandle == NULL)
 	{
 		LogStatusMessage("Unable to open the settings file [%s]. fopen_s error [%d]", path, ret);
 		return FALSE;

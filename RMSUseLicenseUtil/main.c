@@ -79,7 +79,9 @@ BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam
 				"OPERATIONS:"NL
 				"Request: You can click the 'Request' button to request a unit of license."
 				"As of now, you can't provide number of units to be requested."NL
-				"Release: Click the 'Release' button to release the obtained token."NL NL
+				"You may request licenses as many times as you need until the server runs out of tokens."NL
+				"Release: Click the 'Release' button to release the obtained token."NL
+				"You can release licenses as many times as you have requested them before via this utility."NL NL
 				"OUTPUT:"NL
 				"Actual Server: Shows the server as returned by RMS for this session."NL
 				"License Info: Provides those metrics for the requested features."NL NL
@@ -562,8 +564,10 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-	LPSTR lpCmdLine, int nCmdShow)
+int WINAPI WinMain(_In_ HINSTANCE hInstance,
+	_In_opt_ HINSTANCE hPrevInstance,
+	_In_ LPSTR lpCmdLine,
+	_In_ int nCmdShow)
 {
 	return DialogBox(hInstance, MAKEINTRESOURCE(IDD_DIALOG), NULL, DlgProc);
 }
