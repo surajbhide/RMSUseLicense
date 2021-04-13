@@ -60,7 +60,7 @@ VLSgetFeatureInfoT VLSgetFeatureInfoFP;
 VLSgetServerNameFromHandleT VLSgetServerNameFromHandleFP;
 
 static HINSTANCE rmsLib = NULL;
-static DynamicStack rmsHandleStack;
+static DynamicStack rmsHandleStack = NULL;
 static BOOL rmsInitialized = FALSE;
 
 BOOL RMSLoadDll()
@@ -108,15 +108,10 @@ void RMSUnloadDll()
 	}
 }
 
-BOOL RMSCallInitMethods()
+BOOL RMSGetLibInfo()
 {
 	LS_STATUS_CODE status = LS_NO_SUCCESS;
 	LS_LIBVERSION verinfo;
-
-	if (rmsInitialized == TRUE)
-		return TRUE;
-
-	LogStatusMessage("Initializing RMS...");
 
 	if ((status = VLSgetLibInfoFP(&verinfo)) != LS_SUCCESS)
 	{
@@ -124,12 +119,24 @@ BOOL RMSCallInitMethods()
 	}
 	else
 	{
-		LogStatusMessage("Information about the RMS client Library:\n"); 
+		LogStatusMessage("Information about the RMS client Library:\n");
 		LogStatusMessage("szVersion  = [%s]\n", verinfo.szVersion);
 		LogStatusMessage("szProtocol = [%s]\n", verinfo.szProtocol);
 		LogStatusMessage("szPlatform = [%s]\n", verinfo.szPlatform);
 		LogStatusMessage("szLocale   = [%s]\n", verinfo.szLocale);
 	}
+
+	return TRUE;
+}
+
+BOOL RMSCallInitMethods()
+{
+	LS_STATUS_CODE status = LS_NO_SUCCESS;
+
+	if (rmsInitialized == TRUE)
+		return TRUE;
+
+	LogStatusMessage("Initializing RMS...");
 
 	// calls vlsinitialize/set trace/get lib version etc
 	if ( (status = VLSinitializeFP()) != LS_SUCCESS)
@@ -166,6 +173,7 @@ BOOL RMSCallCleanupMethods()
 	}
 
 	StackDestroy(rmsHandleStack);
+	rmsHandleStack = NULL;
 	// call vlscleanup here
 	VLScleanupFP();
 	LogStatusMessage("RMS cleanup called successfully.");
@@ -246,7 +254,7 @@ BOOL RMSRequestLicense(InputDataT input)
 	// request server info
 	RMSGetServerInfo(input);
 	RMSUpdateFeatureInfo(input.featureName, input.versionNumber);
-	RMSGetAcrualServerName(handle);
+	RMSGetActualServerName(handle);
 	SetCursor(LoadCursor(NULL, IDC_ARROW));
 	return TRUE;
 }
@@ -327,13 +335,16 @@ BOOL RMSSetContactServer(InputDataT inputData)
 {
 	LS_STATUS_CODE status = LS_NO_SUCCESS;
 
-	if ((status = VLSsetContactServerFP(inputData.serverName)) != LS_SUCCESS)
+	if (strlen(inputData.serverName) > 0)
 	{
-		LogStatusMessage("FAIL: VLSsetContactServer returned [%d][0x%X] for server name [%s]",
-			status, status, inputData.serverName);
-		return FALSE;
+		if ((status = VLSsetContactServerFP(inputData.serverName)) != LS_SUCCESS)
+		{
+			LogStatusMessage("FAIL: VLSsetContactServer returned [%d][0x%X] for server name [%s]",
+				status, status, inputData.serverName);
+			return FALSE;
+		}
+		LogStatusMessage("VLSsetContactServer returned success. Server set to [%s]", inputData.serverName);
 	}
-	LogStatusMessage("VLSsetContactServer returned success. Server set to [%s]", inputData.serverName);
 	return TRUE;
 }
 
@@ -379,7 +390,7 @@ BOOL RMSUpdateFeatureInfo (char *featureName, char* versionInfo)
 	return TRUE;
 }
 
-BOOL RMSGetAcrualServerName(LS_HANDLE handle)
+BOOL RMSGetActualServerName(LS_HANDLE handle)
 {
 	LS_STATUS_CODE status = LS_NO_SUCCESS;
 	char buf[BUFSIZE];

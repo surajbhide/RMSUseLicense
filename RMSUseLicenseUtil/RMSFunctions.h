@@ -13,4 +13,5 @@ BOOL RMSAreReleasePending();
 BOOL RMSSetTracePath(InputDataT inputData);
 BOOL RMSSetContactServer(InputDataT inputData);
 BOOL RMSUpdateFeatureInfo(char *featureName, char* versionInfo);
-BOOL RMSGetAcrualServerName(LS_HANDLE handle);
+BOOL RMSGetActualServerName(LS_HANDLE handle);
+BOOL RMSGetLibInfo();

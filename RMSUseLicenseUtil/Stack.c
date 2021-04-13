@@ -18,7 +18,8 @@ node NewNode(LicenseInfoT data)
 DynamicStack StackNew()
 {
 	DynamicStack s;
-	s = (DynamicStack)malloc(sizeof(stack_t));
+
+	s = (DynamicStack)calloc(1, sizeof(stack_t));
 	if (s != NULL)
 		s->first = NULL;
 	return s;
@@ -26,6 +27,9 @@ DynamicStack StackNew()
 
 void StackPush(DynamicStack s, LicenseInfoT data)
 {
+	if (s == NULL)
+		return;
+
 	node n = NewNode(data);
 	n->prev = s->first;
 	s->first = n;
@@ -35,6 +39,9 @@ StackNode StackPop(DynamicStack s)
 {
 	node aux;
 	StackNode n = { {0, "", ""}, NULL };
+
+	if (s == NULL)
+		return n;
 
 	if (s->first != NULL)
 	{
@@ -48,6 +55,9 @@ StackNode StackPop(DynamicStack s)
 
 BOOL StackIsEmpty (DynamicStack s)
 {
+	if (s == NULL)
+		return TRUE;
+
 	if (s->first != NULL)
 		return FALSE;
 	else
@@ -56,10 +66,13 @@ BOOL StackIsEmpty (DynamicStack s)
 
 void StackDestroy(DynamicStack s)
 {
+	if (s == NULL)
+		return;
 	StackNode n;
 	while (s->first != NULL)
 	{
 		n = StackPop(s);
 	}
 	free(s);
+	s = NULL;
 }

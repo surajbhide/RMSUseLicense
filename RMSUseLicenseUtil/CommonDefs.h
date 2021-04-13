@@ -1,7 +1,7 @@
 #pragma once
 #include <Windows.h>
 
-#define VERSION "0.8"
+#define VERSION "0.9"
 #define TITLE "RMS Use License Utility (" VERSION ")"
 #define NL "\r\n"
 #define SMALL_BUFFER_SIZE 256

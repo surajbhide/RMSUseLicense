@@ -6,6 +6,10 @@
 #include "CommonDefs.h"
 #include "SaveSettings.h"
 
+//#pragma comment(linker,"\"/manifestdependency:type='win32' \
+//name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
+//processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 // global hook procedure
 HHOOK hhookCBTProc = 0;
 static InputDataT inputData = { "", "", "", "" };
@@ -307,8 +311,6 @@ void ManageDialogSize(HWND hwnd)
 /// START: RMS Related Functions.
 void ProcessLicenseRequest(HWND hwnd)
 {
-	static BOOL shouldReadInput = TRUE;
-
 	if (RMSAreReleasePending() == FALSE)
 	{
 		// re read all info from fields
@@ -393,6 +395,8 @@ void ProcessLicenseRelease(HWND hwnd)
 		EnableWindow(GetDlgItem(hwnd, IDC_FEATURE_TEXT), TRUE);
 		EnableWindow(GetDlgItem(hwnd, IDC_VERSION_TEXT), TRUE);
 		EnableWindow(GetDlgItem(hwnd, IDC_SERVER_NAME), TRUE);
+		// clean up RMS 
+		RMSCallCleanupMethods();
 	}
 }
 
@@ -486,6 +490,9 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			MessageBox(hwnd, msg, "Error", MB_OK | MB_ICONERROR);
 			EndDialog(hwnd, -1);
 		}
+		// print loaded dll info
+		RMSGetLibInfo();
+
 		// if RMS dll is loaded do the vlsinitialize and few other things now
 		if (RMSCallInitMethods() != TRUE)
 		{

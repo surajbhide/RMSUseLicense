@@ -40,7 +40,7 @@ BOOL SaveUserSettings(cbSetFuncPtr cb)
 	int ret = fopen_s(&fileHandle, path, "w");
 	if (ret != 0 || fileHandle == NULL)
 	{
-		LogStatusMessage("Unable to open the settings file [%s] for writing. fopen_s error [%d]", path, ret);
+		LogStatusMessage("Unable to open the settings file [%s] for writing.", path);
 		return FALSE;
 	}
 
@@ -73,7 +73,7 @@ BOOL RestoreUserSettings(cbFunctionPtr cb)
 	int ret = fopen_s (&fileHandle, path, "r");
 	if (ret != 0 || fileHandle == NULL)
 	{
-		LogStatusMessage("Unable to open the settings file [%s]. fopen_s error [%d]", path, ret);
+		LogStatusMessage("Unable to open the settings file [%s].", path);
 		return FALSE;
 	}
 
