@@ -9,7 +9,7 @@
 //#pragma comment(linker,"\"/manifestdependency:type='win32' \
 //name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 //processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
+void ProcessLicenseRelease(HWND hwnd);
 // global hook procedure
 HHOOK hhookCBTProc = 0;
 static InputDataT inputData = { "", "", "", "" };
@@ -367,7 +367,11 @@ void ProcessLicenseRequest(HWND hwnd)
 
 	if (RMSRequestLicense(inputData) != TRUE)
 	{
-		// failed to get licenses
+		// failed to get licenses...clean up if there are no pending handles
+		if (RMSAreReleasePending() == FALSE)
+		{
+			ProcessLicenseRelease(hwnd);
+		}
 		return;
 	}
 	RMSGetServerInfo(inputData);
